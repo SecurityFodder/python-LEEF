@@ -8,7 +8,13 @@ Currently can only use to construct a properly formatted LEEF Log message.
 """
 
 from __future__ import print_function
+from logging.handlers import SysLogHandler
+import logging
 
+
+
+logging.warn("Hello world")
+logging.info()
 
 __version__ = '0.1.0'
 
@@ -24,7 +30,7 @@ class LEEF_Logger:
     product_version = None
 
     def __init__(self, product_vendor, product_name, product_version,
-                 version_major=1, version_minor=0, delimiter="\t"):
+                 version_major=1, version_minor=0, delimiter="\t", syslog_server=False):
         """ Define the LEEF Headers for the application logging """
 
         self.version_major = version_major
@@ -37,20 +43,28 @@ class LEEF_Logger:
             raise ValueError("Delimeter must be '\\t', '|' or '^'")
         self.delimiter = delimiter
 
+        if self.syslog_server:
+            self.logger = logging.getLogger()
+            self.syslog_server = syslog_server
+            self.logger.addHandler(logging.handlers.SysLogHandler(address = (self.syslog_server,514)))
+
+
     def logEvent(self, event_id, keys):
         """
         Log an event
         """
-        return self._createEventString(event_id, keys)
+        complete_log = self._createEventString(event_id, keys)
+        if self.syslog_server:
+            self.logger.info(complete_log)
+        else:
+            return complete_log
 
     def _createEventString(self, event_id, keys):
         header = self._createHeader(event_id)
-
         values = sorted([(str(k) + "=" + str(v))
                          for k, v in iter(keys.items())])
 
         payload = '\t'.join(values)
-
         return (header + payload)
 
     def _createHeader(self, event_id):
